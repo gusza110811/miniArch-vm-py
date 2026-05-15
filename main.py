@@ -1,10 +1,11 @@
 #!/usr/bin/python3
-from memory import Memory, IO
+from memory import Memory, IO, Ram
 import termmagic
 from execute import Executor, OpcodeFault
 from instructions import Instructions
 import argparse
 import os, sys
+import math
 
 AX, BX, CX, DX, CS, DS, SS, ES, SP, BP,   AH, BH, CH, DH = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,   12, 13, 14, 15
 
@@ -148,46 +149,39 @@ class Emulator:
         
         print("\nRam:")
         
-        for val in self.truncate_memory(self.memory.ram):
-            print(val,end="  ")
-            items += 1
-            if items == itemperline:
-                print()
-                items = 0
-        items = 0
+        self.get_memory(self.memory.ram)
         print()
 
-    def truncate_memory(self, mem, start: int = 0, end: int = None):
+    def get_memory(self, mem:Ram):
         result = []
-        if end is None:
-            end = len(mem.values)
+        previous = None
+        repeated = False
 
-        prev_value = None
-        repeat_count = 0
-        printed = False
+        def get_string(bytes:bytearray):
+            out = []
+            for byte in bytes:
+                if 31 < byte < 127:
+                    out.append(chr(byte))
+                else:
+                    out.append(".")
+            
+            return "".join(out)
 
-        for i in range(start, end):
-            value = mem.values[i]
+        for idx in range(int(math.ceil(len(mem.values)/16))):
+            line = bytes(mem.values[idx*16:idx*16+16])
+            if line == previous:
+                repeated = True
+                continue
+            if repeated:
+                print("...")
+                repeated = False
+            print(f"{idx:04X}0",end="")
+            print(" "+line.hex(" "),end="")
+            print(" | ",end="")
+            print(get_string(line))
+            previous = line
 
-            if value == prev_value:
-                repeat_count += 1
-                printed = False
-            else:
-                if repeat_count > 0:
-                    if not printed:
-                        if repeat_count > 1:
-                            result.append(f"{repeat_count:5} times")
-                        else:
-                            result.append("repeated   ")
-                        printed = True
-                    repeat_count = 0
 
-                result.append(f"{i:05X}: x{value:02X} ")
-                prev_value = value
-
-        if repeat_count > 0:
-            result.append(f"...repeated to {(end-1):04X}")
-        
         return result
 
 def writeTrace(filename:str, trace:list):
