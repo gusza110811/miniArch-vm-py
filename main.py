@@ -126,7 +126,7 @@ class Emulator:
             try:
                 inst = Instructions(self.fetch())
             except ValueError as e:
-                print(self.ip, e)
+                print(f"{self.registers[CS]:4X}:{self.ip:4X}", e)
                 self.running == False
             if doTrace:
                 self.trace.append((
