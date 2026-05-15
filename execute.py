@@ -193,6 +193,8 @@ class Executor:
                         address = ip + fetchs(2,True)
                     case 2:
                         address = fetchs(2)
+                    case _:
+                        raise OpcodeFault()
                 match cond:
                     case 0:
                         if not flags[Z]:
