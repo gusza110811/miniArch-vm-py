@@ -35,7 +35,9 @@ class Emulator:
         ]
 
         self.running = True
-        self.doTrace = True
+        self.willDoTrace = False
+
+        self.doTraceWhen = 0xF0000
 
         self.trace = []
         self.jumped = False
@@ -113,9 +115,13 @@ class Emulator:
 
     def main(self,initcode:bytearray):
         self.memory = Memory(initcode)
-        doTrace = self.doTrace
+        doTrace = False
 
         while self.running:
+            if self.willDoTrace:
+                if self.pc + (self.registers[CS] << 4) == self.doTraceWhen:
+                    doTrace = True
+
             self.ip = self.pc
             try:
                 inst = Instructions(self.fetch())
@@ -265,10 +271,12 @@ if __name__ == "__main__":
         __dir__ = os.path.dirname(__file__)
 
     argparser = argparse.ArgumentParser(
-        prog="MiniArch Emulator",
-        description="Emulate MiniArch")
+        prog="MiniArch Virtual Machine",
+        description="Emulate MiniArch Architecture"
+    )
     argparser.add_argument("--rom",help="path to rom image")
     argparser.add_argument("--trace","-t",action="store_true",help="write trace log to .trace (first and last 10000 instructions only)")
+    argparser.add_argument("--trace-when","-w",default="",help="when to start tracing (20 bit physical address) default to 0x07c00 if hda is provided, otherwise 0xf0000")
     argparser.add_argument("--dump","-d",action="store_true",help="dump final state on halt")
     argparser.add_argument("--hda", help="path to disk image")
 
@@ -302,10 +310,17 @@ if __name__ == "__main__":
             emulator.io.disk.disks[0] = open(args.hda,"rb+")
         else:
             sys.exit(f"Disk image not found: {args.hda}")
+        emulator.doTraceWhen = 0x7c00
 
     dump = bool(args.dump)
     trace = bool(args.trace)
-    emulator.doTrace = trace
+    emulator.willDoTrace = trace
+
+    if args.trace_when:
+        try:
+            emulator.doTraceWhen = int(args.trace_when,base=0)
+        except ValueError:
+            sys.exit(f"{args.trace_when} is not a valid integer")
 
     try:
         termmagic.disable_buffering()
